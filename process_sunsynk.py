@@ -35,8 +35,8 @@ import requests
 # =============================================================================
 # ✏️  SITE THRESHOLDS — edit directly here, do NOT set as GitHub secrets
 # =============================================================================
-DAILY_EXPECTED_KWH = 500.0    # Average good day for this site (kWh)
-DAILY_LOW_KWH      = 100.0    # Known worst/low production day (kWh)
+DAILY_EXPECTED_KWH = 37.0    # Average good day for this site (kWh)
+DAILY_LOW_KWH      = 17.0    # Known worst/low production day (kWh)
 
 # =============================================================================
 # 🔒 SECRETS — set in GitHub repo Settings → Secrets → Actions
