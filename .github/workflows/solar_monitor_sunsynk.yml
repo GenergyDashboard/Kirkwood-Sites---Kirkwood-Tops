@@ -1,0 +1,52 @@
+name: Solar Monitor — Sunsynk
+
+on:
+  schedule:
+    - cron: '0 5-18 * * *'   # every hour 07:00–20:00 SAST (UTC+2)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install playwright requests
+
+      - name: Install Chromium
+        run: playwright install chromium --with-deps
+
+      - name: Scrape Sunsynk total kWh
+        env:
+          SUNSYNK_USERNAME: ${{ secrets.SUNSYNK_USERNAME }}
+          SUNSYNK_PASSWORD: ${{ secrets.SUNSYNK_PASSWORD }}
+          PLANT_NAME:       ${{ secrets.PLANT_NAME }}
+        run: python download_sunsynk.py
+
+      - name: Process data and alert
+        env:
+          PLANT_NAME:         ${{ secrets.PLANT_NAME }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python process_sunsynk.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/processed.json data/alert_state.json \
+                  data/sunsynk_snapshot.json data/sunsynk_snapshot_prev.json \
+                  data/sunsynk_hourly.json
+          git diff --staged --quiet || git commit -m "chore: update solar data $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase origin main
+          git push
