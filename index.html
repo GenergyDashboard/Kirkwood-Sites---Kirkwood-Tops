@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Monitor</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --card:     #1a1d27;
+      --border:   #2a2d3a;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --muted2:   #8896b3;
+      --ok:       #22c55e;
+      --low:      #f59e0b;
+      --offline:  #ef4444;
+      --ok-bg:    rgba(34,197,94,0.12);
+      --low-bg:   rgba(245,158,11,0.12);
+      --off-bg:   rgba(239,68,68,0.12);
+      --accent:   #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text);
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Status card ─────────────────────────────────── */
+    .status-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 2rem 2rem 1.75rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.4s;
+    }
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%; transform: translateX(-50%);
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.3;
+      pointer-events: none;
+      transition: background 0.5s;
+    }
+    .status-card.ok::before      { background: var(--ok); }
+    .status-card.low::before     { background: var(--low); }
+    .status-card.offline::before { background: var(--offline); }
+
+    .indicator {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      margin: 0 auto 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .indicator.ok      { background: var(--ok-bg);  box-shadow: 0 0 28px rgba(34,197,94,0.35);  }
+    .indicator.low     { background: var(--low-bg); box-shadow: 0 0 28px rgba(245,158,11,0.35); }
+    .indicator.offline { background: var(--off-bg); box-shadow: 0 0 28px rgba(239,68,68,0.35);  }
+    .indicator.loading { background: rgba(255,255,255,0.04); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .status-label {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      transition: color 0.4s;
+    }
+    .status-label.ok      { color: var(--ok); }
+    .status-label.low     { color: var(--low); }
+    .status-label.offline { color: var(--offline); }
+    .status-label.loading { color: var(--muted); }
+
+    .status-sub { color: var(--muted2); font-size: 0.85rem; }
+
+    /* ── PV number ───────────────────────────────────── */
+    .pv-block {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .pv-number {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .pv-unit  { font-size: 1.1rem; color: var(--muted2); margin-left: 0.25rem; }
+    .pv-label { color: var(--muted); font-size: 0.75rem; margin-top: 0.4rem; }
+
+    /* ── Info pills ──────────────────────────────────── */
+    .info-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.25rem;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .info-pill {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.45rem 1.1rem;
+      text-align: center;
+      min-width: 110px;
+    }
+    .info-pill .val { font-weight: 700; font-size: 0.95rem; }
+    .info-pill .lbl { color: var(--muted); font-size: 0.65rem; margin-top: 0.1rem; }
+
+    /* ── Chart card ──────────────────────────────────── */
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.5rem 1.5rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .chart-title { font-size: 0.8rem; color: var(--muted2); font-weight: 600; }
+
+    .chart-legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .legend-dot        { width: 10px; height: 10px; border-radius: 2px; }
+    .legend-dot.actual { background: var(--ok); }
+    .legend-dot.expected { background: var(--accent); height: 2px; border-radius: 1px; width: 14px; }
+    .legend-dot.irrad  { background: rgba(250,204,21,0.55); border-radius: 2px; }
+
+    /* ── The chart itself ────────────────────────────── */
+    /* chart-area wraps: [bar-zone (relative, SVGs overlay it)] + [axis-row] */
+    .chart-area {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* bar-zone: only bars live here, SVGs overlay it exactly */
+    .bar-zone {
+      position: relative;
+      height: 160px;
+    }
+
+    /* bars grid — fills bar-zone completely, no labels inside */
+    .bar-chart {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      align-items: end;
+      height: 100%;
+      gap: 3px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bar {
+      width: 100%;
+      border-radius: 3px 3px 0 0;
+      background: rgba(34,197,94,0.45);
+      transition: background 0.3s;
+    }
+    .bar.active  { background: var(--ok); }
+    .bar.low-bar { background: rgba(245,158,11,0.7); }
+
+    /* axis-row: sits directly below bar-zone, same 24-col grid, perfectly flat */
+    .axis-row {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 3px;
+      border-top: 1px solid var(--border);
+      padding-top: 5px;
+      margin-top: 1px;
+    }
+    .axis-label {
+      font-size: 0.42rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1;
+    }
+
+    /* SVG overlays — cover only the bar-zone, not the axis */
+    .irrad-svg, .ref-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .irrad-svg { z-index: 0; }
+    .ref-svg   { z-index: 2; }
+
+    /* ── Bottom pills ────────────────────────────────── */
+    .pills-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .pill {
+      flex: 1;
+      min-width: 130px;
+      border-radius: 999px;
+      padding: 0.55rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .pill.green { background: rgba(34,197,94,0.07);   border: 1px solid rgba(34,197,94,0.22);  }
+    .pill.amber { background: rgba(245,158,11,0.07);  border: 1px solid rgba(245,158,11,0.22); }
+    .pill.blue  { background: rgba(59,130,246,0.07);  border: 1px solid rgba(59,130,246,0.22); }
+    .pill-lbl   { font-size: 0.7rem; color: var(--muted2); white-space: nowrap; }
+    .pill-val   { font-weight: 700; font-size: 0.9rem; white-space: nowrap; }
+    .pill.green .pill-val { color: var(--ok); }
+    .pill.amber .pill-val { color: var(--low); }
+    .pill.blue  .pill-val { color: #93c5fd; }
+
+    /* ── Footer / refresh ────────────────────────────── */
+    .bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.25rem;
+    }
+    footer { color: var(--muted); font-size: 0.72rem; }
+
+    .refresh-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--muted2);
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: inherit;
+      transition: background 0.2s, color 0.2s;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1 id="plant-name">Solar Monitor</h1>
+    <p id="last-updated">Loading…</p>
+  </header>
+
+  <!-- Status card -->
+  <div class="status-card loading" id="status-card">
+    <div class="indicator loading" id="indicator">⏳</div>
+    <div class="status-label loading" id="status-label">Loading…</div>
+    <div class="status-sub" id="status-sub">Fetching latest data</div>
+
+    <div class="pv-block">
+      <span class="pv-number" id="pv-number">—</span>
+      <span class="pv-unit">kWh</span>
+      <div class="pv-label">Total PV Yield Today</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-pill">
+        <div class="val" id="last-hour">—</div>
+        <div class="lbl">Last hour</div>
+      </div>
+      <div class="info-pill">
+        <div class="val" id="pct-day">—</div>
+        <div class="lbl">% of exp. day</div>
+      </div>
+      <div class="info-pill">
+        <div class="val" id="pct-hour">—</div>
+        <div class="lbl">% of exp. hour</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <span class="chart-title">Hourly PV Generation (kWh)</span>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot actual"></div>Actual</div>
+        <div class="legend-item"><div class="legend-dot expected"></div>Expected</div>
+        <div class="legend-item"><div class="legend-dot irrad"></div>Irradiation</div>
+      </div>
+    </div>
+
+    <!-- chart-area: bar-zone (with SVG overlays) + axis-row below -->
+    <div class="chart-area" id="chart-area">
+      <div class="bar-zone" id="bar-zone">
+        <svg class="irrad-svg" id="irrad-svg"></svg>
+        <div class="bar-chart"  id="bar-chart"></div>
+        <svg class="ref-svg"   id="ref-svg"></svg>
+      </div>
+      <div class="axis-row" id="axis-row"></div>
+    </div>
+  </div>
+
+  <!-- Threshold pills -->
+  <div class="pills-row">
+    <div class="pill green">
+      <span class="pill-lbl">Avg day</span>
+      <span class="pill-val" id="thr-expected">—</span>
+    </div>
+    <div class="pill amber">
+      <span class="pill-lbl">Known low</span>
+      <span class="pill-val" id="thr-low">—</span>
+    </div>
+    <div class="pill blue">
+      <span class="pill-lbl">Exp. this hour</span>
+      <span class="pill-val" id="thr-hour">—</span>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <footer id="footer">Data from FusionSolar</footer>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+
+</div>
+<script>
+  const DATA_FILE = "data/processed.json";
+
+  // Open-Meteo — direct solar irradiation for the site
+  const IRRAD_URL =
+    "https://api.open-meteo.com/v1/forecast" +
+    "?latitude=-33.5299939205017&longitude=25.690127941130985" +
+    "&hourly=direct_radiation&forecast_days=1&timezone=Africa%2FJohannesburg";
+
+  const CHART_H = 160;   // matches CSS .bar-zone height (used for reference only)
+
+  const STATUS_CONFIG = {
+    ok:      { icon: "",   label: "System OK",      sub: "Generating within normal range",         cls: "ok"      },
+    low:     { icon: "",   label: "Low Production", sub: "Production significantly below expected", cls: "low"     },
+    offline: { icon: "",   label: "Offline",         sub: "No generation detected",                 cls: "offline" },
+  };
+
+  // ── Solar curve (mirrors process_plant_data.py exactly) ──────────────────
+  function solarWindow(month) {
+    const midDay    = (month - 1) * 30 + 15;
+    const amplitude = 0.75;
+    const angle     = 2 * Math.PI * (midDay - 355) / 365;
+    const shift     = amplitude * Math.cos(angle);
+    return { sunrise: 6.0 - shift, sunset: 18.0 + shift };
+  }
+
+  function solarCurveFraction(hour, month) {
+    const { sunrise, sunset } = solarWindow(month);
+    const solarDay = sunset - sunrise;
+    if (solarDay <= 0) return 0;
+    const elapsed = (hour + 1) - sunrise;
+    if (elapsed <= 0) return 0;
+    if (elapsed >= solarDay) return 1;
+    return (1 - Math.cos(Math.PI * elapsed / solarDay)) / 2;
+  }
+
+  function expectedThisHour(hour, month, dailyExp) {
+    const fracEnd   = solarCurveFraction(hour, month);
+    const fracStart = hour > 0 ? solarCurveFraction(hour - 1, month) : 0;
+    return dailyExp * (fracEnd - fracStart);
+  }
+
+  function expectedByHour(hour, month, dailyExp) {
+    return dailyExp * solarCurveFraction(hour, month);
+  }
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+  async function loadData() {
+    try {
+      const [solarRes, irradRes] = await Promise.all([
+        fetch(DATA_FILE + "?t=" + Date.now()),
+        fetch(IRRAD_URL).catch(() => null),
+      ]);
+      const data = await solarRes.json();
+
+      let irradiation = new Array(24).fill(0);
+      if (irradRes && irradRes.ok) {
+        const j = await irradRes.json();
+        const raw = (j.hourly && j.hourly.direct_radiation) || [];
+        irradiation = raw.slice(0, 24).map(v => v || 0);
+      }
+
+      render(data, irradiation);
+    } catch (e) {
+      document.getElementById("status-label").textContent = "Error loading data";
+      document.getElementById("status-sub").textContent   = e.message;
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render(data, irradiation) {
+    const month    = new Date().getMonth() + 1;
+    const total    = data.total_kwh || 0;
+    const lastHour = data.last_hour ?? 0;
+    const dailyExp = (data.thresholds && data.thresholds.expected_daily_kwh) || 1400;
+    const lowDay   = (data.thresholds && data.thresholds.low_day_kwh) || 0;
+    const status   = data.status || "offline";
+    const cfg      = STATUS_CONFIG[status] || STATUS_CONFIG.offline;
+
+    // Header
+    document.getElementById("plant-name").textContent   = data.plant || "Solar Monitor";
+    document.getElementById("last-updated").textContent = "Updated: " + (data.last_updated || "—");
+
+    // Status card
+    const card = document.getElementById("status-card");
+    card.className = "status-card " + cfg.cls;
+    const indicator = document.getElementById("indicator");
+    indicator.className   = "indicator " + cfg.cls;
+    indicator.textContent = cfg.icon;
+    const lbl = document.getElementById("status-label");
+    lbl.className   = "status-label " + cfg.cls;
+    lbl.textContent = cfg.label;
+    document.getElementById("status-sub").textContent = cfg.sub;
+
+    // PV number
+    document.getElementById("pv-number").textContent = total.toFixed(1);
+
+    // Info pills
+    document.getElementById("last-hour").textContent = lastHour + ":00";
+    const pctDay = dailyExp > 0 ? ((total / dailyExp) * 100).toFixed(0) + "%" : "—";
+    document.getElementById("pct-day").textContent = pctDay;
+
+    // Pre-shift irradiation once — all calculations must use this same array
+    // so pills, tooltips and the chart line are all consistent
+    const irradShifted = [...irradiation.slice(1), 0];
+    const irradTotal   = irradShifted.reduce((s, v) => s + v, 0);
+
+    // % of expected cumulative by this hour
+    const expNow = irradTotal > 0
+      ? irradShifted.slice(0, lastHour + 1).reduce((s, v) => s + dailyExp * (v / irradTotal), 0)
+      : expectedByHour(lastHour, month, dailyExp);
+    const pctHour = expNow > 0 ? ((total / expNow) * 100).toFixed(0) + "%" : "—";
+    document.getElementById("pct-hour").textContent = pctHour;
+
+    // Threshold pills
+    document.getElementById("thr-expected").textContent = dailyExp.toLocaleString() + " kWh";
+    document.getElementById("thr-low").textContent      = lowDay.toLocaleString() + " kWh";
+    const thisHourExp = irradTotal > 0
+      ? dailyExp * (irradShifted[lastHour] / irradTotal)
+      : expectedThisHour(lastHour, month, dailyExp);
+    document.getElementById("thr-hour").textContent = thisHourExp.toFixed(1) + " kWh";
+    document.querySelector(".pill.blue .pill-lbl").textContent = `Exp. ${lastHour}:00–${lastHour+1}:00`;
+
+    // Footer
+    document.getElementById("footer").textContent = "FusionSolar · " + (data.date || "");
+
+    // Chart
+    renderChart(data.hourly_pv || [], lastHour, month, dailyExp, status, irradShifted, irradTotal);
+  }
+
+  // ── Chart rendering ───────────────────────────────────────────────────────
+  function renderChart(hourly, lastHour, month, dailyExp, status, irradShifted, irradTotal) {
+    const chart    = document.getElementById("bar-chart");
+    const axisRow  = document.getElementById("axis-row");
+    const refSvg   = document.getElementById("ref-svg");
+    const irradSvg = document.getElementById("irrad-svg");
+
+    chart.innerHTML    = "";
+    axisRow.innerHTML  = "";
+    refSvg.innerHTML   = "";
+    irradSvg.innerHTML = "";
+
+    // Per-hour expected values — irradiation-weighted when available, sine-bell fallback
+    const hourlyExp = irradTotal > 0
+      ? irradShifted.map(v => dailyExp * (v / irradTotal))
+      : Array.from({ length: 24 }, (_, h) => expectedThisHour(h, month, dailyExp));
+    const maxVal    = Math.max(...hourly, ...hourlyExp, 0.01);
+
+    // ── Bars (one div per hour, direct children of the grid) ─────────────────
+    for (let h = 0; h < 24; h++) {
+      const val  = hourly[h] || 0;
+      const hPct = (val / maxVal) * 100;
+
+      const bar = document.createElement("div");
+      bar.className = "bar"
+        + (h === lastHour ? " active" : "")
+        + (status !== "ok" && h === lastHour && val > 0 ? " low-bar" : "");
+      bar.style.height = hPct + "%";
+      bar.title = `${h}:00  actual: ${val.toFixed(2)} kWh  expected: ${hourlyExp[h].toFixed(2)} kWh`;
+      chart.appendChild(bar);
+    }
+
+    // ── Axis labels (separate row, same 24-col grid) ──────────────────────────
+    for (let h = 0; h < 24; h++) {
+      const lbl = document.createElement("div");
+      lbl.className   = "axis-label";
+      lbl.textContent = String(h);
+      axisRow.appendChild(lbl);
+    }
+
+    // ── SVG overlays — after layout settles ──────────────────────────────────
+    requestAnimationFrame(() => {
+      const chartRect = chart.getBoundingClientRect();
+      const bars      = Array.from(chart.querySelectorAll(".bar"));
+      if (!bars.length) return;
+
+      const drawH = chartRect.height;
+
+      // SVGs cover the bar-zone exactly
+      [irradSvg, refSvg].forEach(s => {
+        s.setAttribute("height", drawH);
+        s.style.height = drawH + "px";
+      });
+
+      // x centre of each bar column
+      const xs = bars.map(b => {
+        const r = b.getBoundingClientRect();
+        return r.left - chartRect.left + r.width / 2;
+      });
+
+      // ── Irradiation filled area ─────────────────────────────────────────
+      const maxIrrad = Math.max(...irradShifted, 1);
+      if (irradShifted.some(v => v > 0)) {
+        let d = "";
+        irradShifted.forEach((v, h) => {
+          const x = xs[h];
+          const y = drawH - (v / maxIrrad) * drawH;
+          d += h === 0 ? `M ${x},${y}` : ` L ${x},${y}`;
+        });
+        d += ` L ${xs[23]},${drawH} L ${xs[0]},${drawH} Z`;
+
+        const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        area.setAttribute("d",                  d);
+        area.setAttribute("fill",               "rgba(250,204,21,0.13)");
+        area.setAttribute("stroke",             "rgba(250,204,21,0.45)");
+        area.setAttribute("stroke-width",       "1.5");
+        area.setAttribute("stroke-linejoin",    "round");
+        irradSvg.appendChild(area);
+      }
+
+      // ── Expected reference line ─────────────────────────────────────────────
+      const pts = xs.map((x, h) => {
+        const y = drawH - (hourlyExp[h] / maxVal) * drawH;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      line.setAttribute("points",          pts);
+      line.setAttribute("fill",            "none");
+      line.setAttribute("stroke",          "rgba(59,130,246,0.8)");
+      line.setAttribute("stroke-width",    "2");
+      line.setAttribute("stroke-linejoin", "round");
+      line.setAttribute("stroke-linecap",  "round");
+      refSvg.appendChild(line);
+    });
+  }
+
+  // Auto-refresh every 5 minutes
+  loadData();
+  setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
