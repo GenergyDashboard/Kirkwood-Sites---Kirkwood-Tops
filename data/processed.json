@@ -1,9 +1,9 @@
 {
   "plant": "Kirkwood tops",
-  "last_updated": "2026-03-15 11:25 SAST",
+  "last_updated": "2026-03-15 12:21 SAST",
   "date": "2026-03-15",
-  "total_kwh": 18.1,
-  "last_hour": 11,
+  "total_kwh": 26.0,
+  "last_hour": 12,
   "status": "ok",
   "alerts": {
     "offline": false,
@@ -20,11 +20,11 @@
     }
   },
   "debug": {
-    "curve_fraction": 0.5,
-    "expected_by_now": 18.5,
-    "actual_kwh": 18.1,
-    "pace_trigger": 5.5,
-    "projected_total": 36.2,
+    "curve_fraction": 0.628,
+    "expected_by_now": 23.2,
+    "actual_kwh": 26.0,
+    "pace_trigger": 7.0,
+    "projected_total": 41.4,
     "low_day_kwh": 17.0,
     "sunrise": 5.92,
     "sunset": 18.08,
@@ -46,7 +46,7 @@
     4.0,
     4.6,
     8.8,
-    0.0,
+    7.9,
     0.0,
     0.0,
     0.0,
